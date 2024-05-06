@@ -1,3 +1,4 @@
+import os
 import sys
 import logging
 import urllib.parse
@@ -16,6 +17,7 @@ import config
 from config import BOX_MERGE_THRESHOLD, MERGE_SCORE_THRESHOLD, SCORE_THRESHOLD
 
 
+os.nice(10)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('ocrbot')
 ocr_reader = None
