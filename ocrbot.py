@@ -1,12 +1,11 @@
+import sys
 import logging
-import traceback
 import urllib.parse
 from base64 import urlsafe_b64encode
 from dataclasses import dataclass
 from enum import Enum
 from io import BytesIO
 from typing import List, Tuple
-import json
 
 import cv2
 import easyocr
@@ -43,6 +42,14 @@ class Box:
       max(xy1[0], xy2[0]),
       min(xy1[1], xy2[1]),
       max(xy1[1], xy2[1]),
+    )
+
+  def map(self, func):
+    return Box(
+      func(self.left),
+      func(self.right),
+      func(self.top),
+      func(self.bottom)
     )
 
   def merge(self, other: 'Box'):
@@ -175,6 +182,17 @@ def update_post(session, post_id, remove_tags=set(), add_tags=set(), notes=None)
 
 
 if __name__ == '__main__':
+  if len(sys.argv) > 1:
+    for filename in sys.argv[1:]:
+      with open(filename, 'rb') as f:
+        b1, b2 = do_ocr(f.read())
+      for b in b1:
+        b.box = b.box.map(lambda n: round(n, 2))
+        print(b)
+      for b in b2:
+        print(b)
+    exit(0)
+
   session = sessions.BaseUrlSession(base_url=config.API_BASE_URL)
   encoded_token = urlsafe_b64encode(f"{config.USERNAME}:{config.TOKEN}".encode('ascii')).decode('ascii')
   session.headers = {
