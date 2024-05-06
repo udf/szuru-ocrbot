@@ -223,7 +223,7 @@ if __name__ == '__main__':
       textboxes = process_post(post_id, post['contentUrl'])
       notes = [
         {
-          'polygon': textbox.box.as_poly(),
+          'polygon': textbox.box.map(lambda n: min(max(0, n), 1)).as_poly(),
           'text': textbox.text
         }
         for textbox in textboxes
