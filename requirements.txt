@@ -1,3 +1,5 @@
 easyocr
 opencv-python-headless
 numpy
+requests
+requests-toolbelt

@@ -12,9 +12,6 @@ pkgs.mkShell rec {
     pythonPackages.python
     pythonPackages.venvShellHook
 
-    pythonPackages.requests
-    pythonPackages.requests-toolbelt
-
     gcc-unwrapped
   ];
 
