@@ -232,7 +232,7 @@ if __name__ == '__main__':
         session,
         post_id,
         remove_tags={config.TAG_ERROR, config.TAG_PENDING},
-        add_tags={config.TAG_DONE},
+        add_tags={config.TAG_DONE} if notes else set(),
         notes=notes
       )
     except Exception as e:
