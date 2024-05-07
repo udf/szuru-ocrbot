@@ -1,6 +1,6 @@
+import logging
 import os
 import sys
-import logging
 import urllib.parse
 from base64 import urlsafe_b64encode
 from dataclasses import dataclass
@@ -11,6 +11,7 @@ from typing import List, Tuple
 import cv2
 import easyocr
 import numpy as np
+from PIL import Image
 from requests_toolbelt import sessions
 
 import config
@@ -128,14 +129,21 @@ def merge_close_boxes(boxes: List[TextBox]) -> List[TextBox]:
   return boxes
 
 
-def do_ocr(buffer) -> Tuple[List[TextBox], List[TextBox]]:
+def do_ocr(image_handle) -> Tuple[List[TextBox], List[TextBox]]:
   global ocr_reader
   if not ocr_reader:
     ocr_reader = easyocr.Reader(["en"])
 
-  img = cv2.imdecode(np.frombuffer(buffer, np.uint8), cv2.IMREAD_COLOR)
+  # alpha blend a white background to fix opencv not checking the alpha
+  im = Image.open(image_handle).convert('RGBA')
+  new_im = Image.new('RGBA', im.size, 'white')
+  new_im.paste(im, mask=im)
+  new_im = new_im.convert('RGB')
+  new_im_handle = BytesIO()
+  new_im.save(new_im_handle, format='png', compress_level=1)
+
+  img = cv2.imdecode(np.frombuffer(new_im_handle.getbuffer(), np.uint8), cv2.IMREAD_COLOR)
   height, width, _ = img.shape
-  img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
   boxes: List[TextBox] = []
   low_score_boxes: List[TextBox] = []
   for bbox, text, score in ocr_reader.readtext(img, low_text=0.3):
@@ -161,7 +169,7 @@ def process_post(post_id, url):
       image.write(chunk)
   image.seek(0)
   logger.info(f'#{post_id}: Processing')
-  high_score_boxes, low_score_boxes = do_ocr(image.getbuffer())
+  high_score_boxes, low_score_boxes = do_ocr(image)
   logger.info(f'#{post_id} Found {len(high_score_boxes)}+{len(low_score_boxes)} texts')
   return high_score_boxes + low_score_boxes
 
@@ -187,7 +195,7 @@ if __name__ == '__main__':
   if len(sys.argv) > 1:
     for filename in sys.argv[1:]:
       with open(filename, 'rb') as f:
-        b1, b2 = do_ocr(f.read())
+        b1, b2 = do_ocr(f)
       for b in b1:
         b.box = b.box.map(lambda n: round(n, 2))
         print(b)
