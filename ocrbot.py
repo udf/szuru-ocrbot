@@ -9,10 +9,6 @@ from enum import Enum
 from io import BytesIO
 from typing import List, Tuple
 
-import cv2
-import easyocr
-import numpy as np
-from PIL import Image
 from requests_toolbelt import sessions
 
 import config
@@ -139,6 +135,10 @@ def merge_close_boxes(boxes: List[TextBox]) -> List[TextBox]:
 
 
 def do_ocr(image_handle) -> Tuple[List[TextBox], List[TextBox]]:
+  import cv2
+  import easyocr
+  import numpy as np
+  from PIL import Image
   global ocr_reader
   if not ocr_reader:
     ocr_reader = easyocr.Reader(["en"])
