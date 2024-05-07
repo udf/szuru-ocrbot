@@ -1,4 +1,5 @@
 import logging
+import math
 import os
 import sys
 import urllib.parse
@@ -79,14 +80,22 @@ class Box:
       or self.top - margin > other.bottom
     )
 
+  def get_center(self):
+    return (self.left + self.right) / 2, (self.top + self.bottom) / 2
+
   def find_nearest_side(self, other: 'Box') -> Tuple[float, Position]:
-    distances = (
-      (abs(self.left - other.right), Position.LEFT),
-      (abs(self.right - other.left), Position.RIGHT),
-      (abs(self.top - other.bottom), Position.TOP),
-      (abs(self.bottom - other.top), Position.BOTTOM),
-    )
-    return min(distances, key=lambda d: d[0])
+    p1 = self.get_center()
+    p2 = other.get_center()
+    angle = math.degrees(math.atan2(p1[0] - p2[0], p1[1] - p2[1])) % 360
+    match ((angle + 45) % 360) // 90:
+      case 1:  # [45, 135)
+        return max(0, self.left - other.right), Position.LEFT
+      case 3:  # [225, 315)
+        return max(0, other.left - self.right), Position.RIGHT
+      case 0:  # [315, 45)
+        return max(0, self.top - other.bottom), Position.TOP
+      case _:  # [135, 225)
+        return max(0, other.top - self.bottom), Position.BOTTOM
 
 
 @dataclass
