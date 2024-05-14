@@ -18,6 +18,7 @@ from config import BOX_MERGE_THRESHOLD, MERGE_SCORE_THRESHOLD, SCORE_THRESHOLD
 os.nice(10)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('ocrbot')
+clamp = lambda val, low, high: min(max(low, val), high)
 ocr_reader = None
 
 
@@ -79,19 +80,32 @@ class Box:
   def get_center(self):
     return (self.left + self.right) / 2, (self.top + self.bottom) / 2
 
+  def get_area(self):
+    return abs(self.left - self.right) * abs(self.top - self.bottom) 
+
+  def clip_x(self, low, high):
+    return Box(clamp(self.left, low, high), clamp(self.right, low, high), self.top, self.bottom)
+
+  def clip_y(self, low, high):
+    return Box(self.left, self.right, clamp(self.top, low, high), clamp(self.bottom, low, high))
+
   def find_nearest_side(self, other: 'Box') -> Tuple[float, Position]:
-    p1 = self.get_center()
-    p2 = other.get_center()
-    angle = math.degrees(math.atan2(p1[0] - p2[0], p1[1] - p2[1])) % 360
-    match ((angle + 45) % 360) // 90:
-      case 1:  # [45, 135)
-        return max(0, self.left - other.right), Position.LEFT
-      case 3:  # [225, 315)
-        return max(0, other.left - self.right), Position.RIGHT
-      case 0:  # [315, 45)
-        return max(0, self.top - other.bottom), Position.TOP
-      case _:  # [135, 225)
-        return max(0, other.top - self.bottom), Position.BOTTOM
+    center_x, center_y = self.get_center()
+    areas = [
+      (other.clip_x(0, self.left).get_area(), max(0, self.left - other.right), Position.LEFT),
+      (other.clip_x(self.right, 1).get_area(), max(0, other.left - self.right), Position.RIGHT),
+      (other.clip_y(0, self.top).get_area(), max(0, self.top - other.bottom), Position.TOP),
+      (other.clip_y(self.bottom, 1).get_area(), max(0, other.top - self.bottom), Position.BOTTOM),
+      # measure by the area on either side of the center
+      # (in the case of fully contained boxes, the above areas will be 0)
+      (other.clip_x(0, center_x).get_area(), 0, Position.LEFT),
+      (other.clip_x(center_x, 1).get_area(), 0, Position.RIGHT),
+      (other.clip_y(0, center_y).get_area(), 0, Position.TOP),
+      (other.clip_y(center_y, 1).get_area(), 0, Position.BOTTOM),
+    ]
+
+    max_area, dist, position = max(areas, key=lambda v: v[0])
+    return dist, position
 
 
 @dataclass
