@@ -9,6 +9,7 @@ from enum import Enum
 from io import BytesIO
 from typing import List, Tuple
 
+from requests import exceptions
 from requests_toolbelt import sessions
 
 import config
@@ -238,14 +239,18 @@ if __name__ == '__main__':
   }
 
   logger.info('Fetching posts...')
-  posts = session.get(
-    'posts',
-    params={
-      'query': f'type:image {config.TAG_PENDING}',
-      'limit': 10,
-      'fields': 'id,contentUrl'
-    }
-  ).json()
+  try:
+    posts = session.get(
+      'posts',
+      params={
+        'query': f'type:image {config.TAG_PENDING}',
+        'limit': 10,
+        'fields': 'id,contentUrl'
+      }
+    ).json()
+  except exceptions.HTTPError:
+    logger.exception('Error connecting to server')
+    exit()
 
   logger.info(f'Fetched {len(posts["results"])} post(s)!')
   for post in posts['results']:
