@@ -162,9 +162,12 @@ def do_ocr(image_handle) -> Tuple[List[TextBox], List[TextBox]]:
   im = Image.open(image_handle).convert('RGBA')
   new_im = Image.new('RGBA', im.size, 'white')
   new_im.paste(im, mask=im)
+  im = None
   new_im = new_im.convert('RGB')
+  new_im.thumbnail((2048, 2048), resample=Image.Resampling.LANCZOS)
   new_im_handle = BytesIO()
   new_im.save(new_im_handle, format='png', compress_level=1)
+  new_im = None
 
   img = cv2.imdecode(np.frombuffer(new_im_handle.getbuffer(), np.uint8), cv2.IMREAD_COLOR)
   height, width, _ = img.shape
