@@ -207,7 +207,8 @@ def update_post(session, post_id, remove_tags=set(), add_tags=set(), notes=None)
     f'post/{post_id}',
     params={
       'fields': 'version,tags'
-    }
+    },
+    timeout=5
   ).json()
   new_data = {
     'version': post['version'],
@@ -215,7 +216,7 @@ def update_post(session, post_id, remove_tags=set(), add_tags=set(), notes=None)
   }
   if notes:
     new_data['notes'] = notes
-  session.put(f'post/{post_id}', json=new_data)
+  session.put(f'post/{post_id}', json=new_data, timeout=5)
 
 
 if __name__ == '__main__':
@@ -249,7 +250,8 @@ if __name__ == '__main__':
         'query': f'type:image {config.TAG_PENDING}',
         'limit': 10,
         'fields': 'id,contentUrl'
-      }
+      },
+      timeout=5
     ).json()
   except exceptions.HTTPError:
     logger.exception('Error connecting to server')
@@ -258,6 +260,7 @@ if __name__ == '__main__':
   logger.info(f'Fetched {len(posts["results"])} post(s)!')
   for post in posts['results']:
     post_id = post['id']
+    notes = None
     try:
       textboxes = process_post(post_id, post['contentUrl'])
       notes = [
@@ -267,18 +270,12 @@ if __name__ == '__main__':
         }
         for textbox in textboxes
       ]
-      update_post(
-        session,
-        post_id,
-        remove_tags={config.TAG_ERROR, config.TAG_PENDING},
-        add_tags={config.TAG_DONE} if notes else set(),
-        notes=notes
-      )
     except Exception as e:
       logger.exception(f'#{post_id}: Error running OCR')
-      update_post(
-        session,
-        post_id,
-        remove_tags={config.TAG_DONE, config.TAG_PENDING},
-        add_tags={config.TAG_ERROR}
-      )
+    update_post(
+      session,
+      post_id,
+      remove_tags={config.TAG_ERROR if notes else config.TAG_DONE, config.TAG_PENDING},
+      add_tags={config.TAG_DONE if notes else config.TAG_ERROR},
+      notes=notes
+    )
